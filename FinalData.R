@@ -27,3 +27,10 @@ plot(T_degC~Depthm, data=bottleWanted)
 plot(Phaeop~Depthm, data=bottleWanted)
 plot(ChlorA~Depthm, data=bottleWanted)
 #note: we have more info on ChlorA than Phaeop (Whatever that means?)
+ChlorA_Data <- bottleWanted[,7]
+Phaeop_Data <- bottleWanted[,8]
+nutrient_variables <- c(4,5,7,9,10,11,12,13)
+nut_data <- bottleWanted[,nutrient_variables]
+nut_plus <- nut_data
+nut_plus[,9] <- ChlorA_Data
+pairs(nut_plus)
