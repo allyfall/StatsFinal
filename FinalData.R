@@ -38,3 +38,4 @@ plot(log(Phaeop)~ChlorA, data=bottleWanted)
 plot(log(Phaeop)~log(ChlorA), data = bottleWanted)
 #so if you plot the logs of both ChlorA and Phaeop, it looks pretty linear.
 #if only log of Phaeop, looks like it is exponential decay. 
+#test comment
