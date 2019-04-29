@@ -18,6 +18,8 @@ masterint <- c(5,6,7,54,26,28,30,32,34,39)
 bottleWanted <- bottleData[,varint]
 bottlemaster <- bottleData[,masterint]
 ChlorA <- bottleWanted[,6]
+plot(pH1~pH2, data=bottleWanted)
+plot(C14As1~C14As2, data=bottleWanted)
 
 #nutrient names: PO4uM:26 SiO3uM:28 
 #NO2uM:30 NO3uM:32 NH3uM:34 C14As1:36 C14As2:39
