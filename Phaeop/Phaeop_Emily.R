@@ -24,6 +24,7 @@ bottle.d <- bottle.d[,-74]
 
 sum(as.logical(is.na(bottle.d[1])==FALSE))
 # No fully NA rows 
+#### ONLY GOING TO USE COMPLETE CASES - taking out any rows with NA inputs!! This will happen later when I subset out nutrient data for Phaeop analysis 
 
 # Exploratory analysis continued:
 plot(log(bottle.d$Phaeop))
@@ -55,35 +56,7 @@ str(d.Phaeop)
 plot(d.Phaeop$Phaeop) 
 # Comments on plot: Interesting! Pretty evenly spread out! Some outliers, near beginning it seems.
 
-# - Dividing into train and test sets, 70-30% split, RANDOMIZED (some part of this is year related...look into the metadata)
-# Generate amount to split for each set: 
-num.rows.phaeop <- nrow(d.Phaeop) # Number of values for non-NA Phaeop recordings
-num.rows.phaeop
-
-n.train <- round(nrow(d.Phaeop)*.70)
-n.test <- nrow(d.Phaeop) - n.train
-
-# Check: 
-n.test + n.train == nrow(d.Phaeop) # Nice, checked
-
-# Generate train and test subsets: 
-## Going to try sample for this 
-set.seed(2019)
-
-test.inds <- sample(num.rows.phaeop, size=n.test, replace=FALSE)
-test <- d.Phaeop[test.inds, ]
-n.test # checked 
-
-train <- d.Phaeop[-test.inds, ]
-n.train # Checked 
-
-
-## Order of predictive modeling (regression)
-# - Predict based on nutrients 
-    # - Going to use nutrients: 
-    # PO4uM SiO3uM NO2uM NO3uM NH3uM C14As1 C14As2
-# - Once I find the metadata for timing, we could also test on the LAST YEAR and subset this out, potentially. 
-
+## Subset out nutrients: 
 # Nutrients: 
 nutrients <- c("PO4uM", "SiO3uM", "NO2uM", "NO3uM", "NH3uM", "C14As1", "C14As2")
 
@@ -92,25 +65,242 @@ nutrient.is <- which(names(d.Phaeop) %in% nutrients)
 # Subset out the nutrients as an option, and to inspect some: 
 d.nutrients <- d.Phaeop[,nutrient.is]
 
-summary(d.nutrients)
+summary(d.nutrients) # A lot of NA's. Will fix 
+
+# Make a new data frame of response and nutrient predictors: 
+d.Phaeop$Phaeop
+
+d.Phaeop.nuts <-cbind("Phaeop" = d.Phaeop$Phaeop, d.nutrients)
+
+summary(d.Phaeop.nuts)
+
+# -----> NOW only use cases with complete nutrient data, from here, for analysis!
+sum(complete.cases(d.Phaeop.nuts)) 
+
+d.Phaeop.nuts <- d.Phaeop.nuts[complete.cases(d.Phaeop.nuts), ] # Perf 
+# Will have this number (3600) data points in the total  analysis
+
+# - Dividing into train and test sets, 70-30% split, RANDOMIZED (some part of this is year related...look into the metadata)
+# Generate amount to split for each set: 
+num.rows <- nrow(d.Phaeop.nuts) # Number of values for non-NA Phaeop recordings
+num.rows
+
+n.train <- round(nrow(d.Phaeop.nuts)*.70)
+n.test <- nrow(d.Phaeop.nuts) - n.train
+
+# Check: 
+n.test + n.train == nrow(d.Phaeop.nuts) # Nice, checked
+
+# Generate train and test subsets: 
+## Going to try sample for this 
+set.seed(2019)
+
+test.inds <- sample(num.rows, size=n.test, replace=FALSE)
+# Check: 
+length(test.inds) == n.test
+
+test <- d.Phaeop.nuts[test.inds, ]
+nrow(test) == n.test # checked 
+
+train <- d.Phaeop.nuts[-test.inds, ]
+nrow(train) == n.train # Checked 
+
+##### Order of predictive modeling (regression)
+# - Predict based on nutrients 
+    # - Going to use nutrients: 
+    # PO4uM SiO3uM NO2uM NO3uM NH3uM C14As1 C14As2
+# - Once I find the metadata for timing, we could also test on the LAST YEAR and subset this out, potentially. 
 
 # Pairs plots to inspect data 
 quartz() 
 
-pairs(Phaeop ~ PO4uM + SiO3uM + NO2uM + NO3uM + NH3uM + C14As1 + C14As2, data=d.Phaeop, na.action = na.omit)
+pairs(Phaeop ~ PO4uM + SiO3uM + NO2uM + NO3uM + NH3uM + C14As1 + C14As2, data=d.Phaeop.nuts)
+
+pairs(sqrt(Phaeop) ~ PO4uM + SiO3uM + NO2uM + NO3uM + NH3uM + C14As1 + C14As2, data=d.Phaeop.nuts)
+
 # Initial notes: 
 # - PO4uM + SiO3uM look VERY highly positively linearly correlated! 
 # - PO4uM + SiO3uM + NO3uM look very highly positively linearly correlated # - C14As1 + C14As2 look very highly positively linearly correlated 
+# - <3 Log transform everything!!! Clustered around 0/at pretty vastly diff scales 
+# - Cols 4-8 need transformation to ameliorate clustering on LHand side of the plot
+# - C14 data needs MAJOR log transform to fit vastly different scale. Cols 3 and 5 could also use this 
 
+# Pairs plot for transformed data: 
+pairs(log(Phaeop) ~ log(PO4uM) + log(SiO3uM) + log(NO2uM) + log(NO3uM) + log(NH3uM) + log(C14As1) + log(C14As2), data=d.Phaeop.nuts)
+
+quartz()
+pairs(sqrt(Phaeop) ~ log(PO4uM) + log(SiO3uM) + log(NO2uM) + log(NO3uM) + log(NH3uM) + log(C14As1) + log(C14As2), data=d.Phaeop.nuts)
+
+# NOTE: Some data points in these are 0. Use an alternative transformation than log to deal with these 
+
+summary(log(train$Phaeop))
+
+summary(train)
+
+### Transformations: 
+pairs(sqrt(Phaeop) ~ log(PO4uM), data=d.Phaeop.nuts)
+summary(d.Phaeop.nuts$PO4uM)
+summary(sqrt(d.Phaeop.nuts$PO4uM))
+# Doesn't change that much 
+
+summary(train)
+
+summary(log(train$Phaeop)) # Zero vals 
+summary(log(train$Phaeop + 1))
+summary(sqrt(train$Phaeop)) # SQRT RESPONSE
+plot(sqrt(train$Phaeop))
+plot(log(train$Phaeop+1))
+
+summary(train$PO4uM) # But also pretty fine untransformed - KEEP UNTRANSFORMED 
+summary(log(train$PO4uM)) # This one is fine 
+
+summary(train$SiO3uM) # Bad init  
+summary(log(train$SiO3uM)) # Zero vals 
+summary(log(train$SiO3uM + 1)) # DO THIS ONE 
+summary(sqrt(train$SiO3uM))
+
+summary(train$NO2uM) # Okay untransformed 
+plot(train$NO2uM)
+summary(log(train$NO2uM)) # Zero vals 
+summary(log(train$NO2uM + 1))
+summary(sqrt(train$NO2uM))
+pairs(sqrt(Phaeop) ~ log(NO2uM+1), data=train)
+plot(log(train$NO2uM + 1))
+plot(sqrt(train$NO2uM)) # Either 
+
+pairs(sqrt(Phaeop) ~ NO2uM, data=train)
+pairs(sqrt(Phaeop) ~ log(NO2uM+1), data=train)
+pairs(sqrt(Phaeop) ~ sqrt(NO2uM), data=train) # May spread it out a bit better 
+pairs(sqrt(Phaeop) ~ sqrt(NO2uM), data=train)
+
+summary(train$NO3uM)
+summary(log(train$NO3uM)) # Zero vals 
+summary(log(train$NO3uM+1)) # Good 
+summary(sqrt(train$NO3uM))
+
+summary(train$NH3uM)
+summary(log(train$NH3uM)) # Zero vals 
+summary(sqrt(train$NH3uM)) # This one probably looks fine 
+summary(log(train$NH3uM + 1))
+
+summary(train$C14As1) 
+summary(log(train$C14As1))
+summary(log(train$C14As1 + 1)) # This one, prob
+
+summary(sqrt(train$C14As1)) # Bad. 
+summary(log(train$C14As2)) # Zero vals 
+summary(log(train$C14As2 + 1)) # this one, prob 
+
+summary(log(train))
 
 #### Get to some predictions to test: 
 # (Note, need to build this on test data irl)
-fit1 <- lm(Phaeop ~ PO4uM + SiO3uM + NO2uM + NO3uM + NH3uM + C14As1 + C14As2, data=train, na.action = na.omit)
+### Fit on untransformed data ### 
+fit.noTransform <- lm(Phaeop ~ PO4uM + SiO3uM + NO2uM + NO3uM + NH3uM + C14As1 + C14As2, data=train)
+
+summary(fit.noTransform)
+
+### Fit on all log-transformed data ### 
+fit.logTrans <- lm(log(Phaeop) ~ log(PO4uM) + log(SiO3uM) + log(NO2uM) + log(NO3uM) + log(NH3uM) + log(C14As1) + log(C14As2), data=train)
+
+summary(fit.logTrans)
+
+fit.transforms <- lm(sqrt(Phaeop) ~ sqrt(PO4uM) + log(SiO3uM + 1) + sqrt(NO2uM) + log(NO3uM+1) + sqrt(NH3uM) + log(C14As1 + 1) + log(C14As2 + 1), data=train)
+
+summary(fit.transforms)
+summary(fit.noTransform)
+
+# Variance Inflation Factors (VIFs): 
+library(car)
+vif(fit.transforms) # Some of these are large 
+# Strong suggestion of multi-colinearity... 
+
+cor(train) 
+# Notes from correlations: 
+# - C14s highly correlated 
+# - PO4, NO3, Si03 highly correlated 
+
+summary(fit.transforms)
+
+# Take out least significant var, also highly correlated C14
+fit.6 <- lm(sqrt(Phaeop) ~ sqrt(PO4uM) + log(SiO3uM + 1) + sqrt(NO2uM) + log(NO3uM+1) + sqrt(NH3uM) + log(C14As1 + 1), data=train)
+
+summary(fit.transforms)
+
+summary(fit.6)
+vif(fit.6)
+
+fit.5 <- lm(sqrt(Phaeop) ~ log(SiO3uM + 1) + sqrt(NO2uM) + log(NO3uM+1) + sqrt(NH3uM) + log(C14As1 + 1), data=train)
+
+summary(fit.5)
+vif(fit.5)
+# Probably time to test with some variable selections... 
+## Variable selection: 
+# Best subsets selection: 
+library(leaps)
+### Predictions: 
+best.sub <- regsubsets(sqrt(Phaeop) ~ sqrt(PO4uM) + log(SiO3uM + 1) + sqrt(NO2uM) + log(NO3uM+1) + sqrt(NH3uM) + log(C14As1 + 1) + log(C14As2 + 1), data=train, nvmax=8)
+
+summary(best.sub)
+
+sb <- summary(best.sub)
+
+names(sb)
+sb$which
+sb$rsq
+plot(sb$rsq) # Nice! Levels off around 3-5
+sb$adjr2
+plot(sb$adjr2)
+sb$rss
+sb$bic
+plot(sb$bic) # Nice, 3-5 again - super flatline at 5
+
+# Evaluating models with 3, 4 and 5 covariates 
+summary(fit.transforms)
+sb 
+
+fit.3 <- lm(sqrt(Phaeop) ~ sqrt(NO2uM) + log(NO3uM + 1) + log(C14As1 + 1), data = train)
+
+summary(fit.3)
+
+fit.4 <- lm(sqrt(Phaeop) ~ sqrt(NO2uM) + log(NO3uM + 1) + sqrt(NH3uM) + log(C14As1 + 1), data = train)
+
+summary(fit.4) # Nice, still great 
+
+fit.5 <- lm(sqrt(Phaeop) ~ sqrt(NO2uM) + log(NO3uM + 1) + sqrt(NH3uM) + log(C14As1 + 1), data = train)
+
+summary(fit.5) # No detriment to 
+## FINAL MODEL <3 
+
+
+###### PREDICTIONS: 
+test.nutrients <- test[,-test$Phaeop]
+
+preds.fit5 <- as.data.frame(predict(fit.5, test.nutrients, interval="prediction"))
+
+# Errors: 
+error.fit5.preds <- test$Phaeop - preds.fit5$fit
+
+# RMSE 
+sqrt(mean(error.fit5.preds^2))
+
+summary(preds2)
 
 summary(fit1)
 
-preds1 <- predict(fit1, test, interval="prediction", na.action=na.omit)
+preds1 <- as.data.frame(predict(fit1, test.nutrients, interval="prediction")) # Hm. Not right length 
 
+nutrient.test <- which(names(test) %in% nutrients)
+test.nutrients <- test[ ,nutrient.test]
+
+head(preds.test)
+
+test.nutrients
+preds.test <- as.data.frame(predict(fit1, test.nutrients, interval="prediction"), na.action=na.omit)
+
+summary(test$Phaeop)
+preds.test
+nrow(test.nutrients)
 summary(preds1)
 summary(test$Phaeop)
 
@@ -118,3 +308,14 @@ length(preds1)
 length(test$Phaeop)
 summary(test$Phaeop)
 summary(na.omit(test$Phaeop) - preds1)
+
+names(d.Phaeop)
+head(d.Phaeop)
+
+summary(bottle.d[!is.na(bottle.d$Phaeop),])
+
+d.Phaeop[d.Phaeop$Cst_Cnt==20854,]
+
+summary(bottle.d[bottle.d$Cst_Cnt==905,])
+d.Phaeop$Cst_Cnt
+plot(d.Phaeop$Phaeop, bottle.d$O2Sat)
