@@ -292,46 +292,28 @@ preds.fit5 <- as.data.frame(predict(fit.5, test.nutrients, interval="prediction"
 # Errors: 
 error.fit5.preds <- test$Phaeop - preds.fit5$fit
 
+# MSE: 
+mean(error.fit5.preds^2)
 # RMSE 
 sqrt(mean(error.fit5.preds^2))
+# R-squared = cor^2
+cor(actuals.preds.fit5$actuals, actuals.preds.fit5$predicteds)^2 # Doesn't explain everything....
 
-# Calculating R-squared for the prediction model on the test data 
-SSE.preds.fit5 <- sum((test$Phaeop - preds.fit5) ^ 2)
-SST.preds.fit5 <- sum((test$Phaeop - mean(test$Phaeop)) ^ 2)
-1 - SSE.preds.fit5/SST.preds.fit5
+# One way to measure accuracy: Looking at simple correlation between actual and predicted values: 
+actuals.preds.fit5 <- data.frame(cbind(actuals=test$Phaeop, predicteds=preds.fit5$fit)) 
+head(test$Phaeop)
+head(preds.fit5)
+head(actuals.preds.fit5)
 
-summary(preds2)
+correlation.accuracy.fit5 <- cor(actuals.preds.fit5)
+correlation.accuracy.fit5 # Not bad!! 66%
 
-summary(fit1)
+# Can get all error metrics in one go using regr.eval() function in the DMwR package: 
+install.packages("DMwR")
+library(DMwR)
 
-preds1 <- as.data.frame(predict(fit1, test.nutrients, interval="prediction")) # Hm. Not right length 
+?regr.eval()
+regr.eval(actuals.preds.fit5$actuals, actuals.preds.fit5$predicteds)
 
-nutrient.test <- which(names(test) %in% nutrients)
-test.nutrients <- test[ ,nutrient.test]
 
-head(preds.test)
 
-test.nutrients
-preds.test <- as.data.frame(predict(fit1, test.nutrients, interval="prediction"), na.action=na.omit)
-
-summary(test$Phaeop)
-preds.test
-nrow(test.nutrients)
-summary(preds1)
-summary(test$Phaeop)
-
-length(preds1)
-length(test$Phaeop)
-summary(test$Phaeop)
-summary(na.omit(test$Phaeop) - preds1)
-
-names(d.Phaeop)
-head(d.Phaeop)
-
-summary(bottle.d[!is.na(bottle.d$Phaeop),])
-
-d.Phaeop[d.Phaeop$Cst_Cnt==20854,]
-
-summary(bottle.d[bottle.d$Cst_Cnt==905,])
-d.Phaeop$Cst_Cnt
-plot(d.Phaeop$Phaeop, bottle.d$O2Sat)
