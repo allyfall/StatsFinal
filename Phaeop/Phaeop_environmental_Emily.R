@@ -95,3 +95,16 @@ best.sub <- regsubsets(sqrt(Phaeop) ~ ., data=train.e, nvmax=3)
 sb.e <- summary(best.sub)
 plot(sb.e$rsq) # Sweet, choose 3 
 plot(sb.e$bic)
+
+## A little prediction: 
+pred.e <- as.data.frame(predict.lm(fit1.e, test.e, interval="prediction"))
+head(pred.e)
+
+actuals.preds.e <- data.frame(cbind(actuals=test.e$Phaeop, predicteds=pred.e$fit)) 
+
+install.packages("DMwR")
+library(DMwR)
+
+regr.eval(actuals.preds.e$actuals, actuals.preds.e$predicteds)
+
+summary(fit1.e)
