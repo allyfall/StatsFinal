@@ -272,15 +272,22 @@ sb
 fit.3 <- lm(sqrt(Phaeop) ~ sqrt(NO2uM) + log(NO3uM + 1) + log(C14As1 + 1), data = train)
 
 summary(fit.3)
+plot(fit.3)
+vif(fit.3)
 
 fit.4 <- lm(sqrt(Phaeop) ~ sqrt(NO2uM) + log(NO3uM + 1) + sqrt(NH3uM) + log(C14As1 + 1), data = train)
 
 summary(fit.4) # Nice, still great 
+vif(fit.4)
+plot(fit.4)
 
-fit.5 <- lm(sqrt(Phaeop) ~ sqrt(NO2uM) + log(NO3uM + 1) + sqrt(NH3uM) + log(C14As1 + 1), data = train)
+sqrt(PO4uM) +  + sqrt(NO2uM) + log(NO3uM+1) + sqrt(NH3uM) + log(C14As1 + 1) + log(C14As2 + 1)
+
+fit.5 <- lm(sqrt(Phaeop) ~ log(SiO3uM + 1) + sqrt(NO2uM) + log(NO3uM + 1) + sqrt(NH3uM) + log(C14As1 + 1), data = train)
 
 summary(fit.5) # No detriment to 
 ## FINAL MODEL <3 
+vif(fit.5)
 
 plot(fit.5)
 

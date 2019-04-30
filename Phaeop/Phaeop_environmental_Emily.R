@@ -85,12 +85,15 @@ fit1.e <- lm(sqrt(Phaeop) ~ ., data=train.e)
 summary(fit1.e) # Looks good for significance, terrible R-squared 
 
 vif(fit1.e) # Eh, fine. Temp and O2 look related, but still running 
+plot(fit1.e)
 
 ## Variable selection: 
 # Best subsets selection: 
 library(leaps)
 ### Predictions: 
 best.sub <- regsubsets(sqrt(Phaeop) ~ ., data=train.e, nvmax=3)
+
+names(train.e)
 
 sb.e <- summary(best.sub)
 plot(sb.e$rsq) # Sweet, choose 3 
