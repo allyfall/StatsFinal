@@ -89,13 +89,14 @@ plot(bCN$bic)
 names(nut_data)
 nut_best_mod <- lm(ChlorA_nut~PO4uM+SiO3uM+NO2uM+NO3uM+NH3uM+C14As2, data=nut_data, na.action=na.omit)
 nut_log_mod <- lm(ChlorA_nut~log(PO4uM)+SiO3uM+NO2uM+NO3uM+NH3uM+C14As2, data=nut_data, na.action=na.omit)
-nut_log_mod2 <- lm(ChlorA_nut~log(PO4uM)+SiO3uM+NO2uM+NO3uM+NH3uM+log(C14As2), data=nut_data, na.action=na.omit)
+nut_log_mod2 <- lm(sqrt(ChlorA_nut)~log(PO4uM)+SiO3uM+NO2uM+NO3uM+NH3uM+C14As2, data=nut_data, na.action=na.omit)
 summary(nut_best_mod)
 #mrsq = .63
 #how good is model fit? 
 #rsq is 64% for both
 summary(nut_best_mod)$r.squared
 summary(nut_log_mod)$r.squared
+summary(nut_log_mod2)$r.squared #huh 62.2 for this one. 
 #Residual Mean Sq Error: 92.4%
 summary(nut_best_mod)$sigma 
 
@@ -138,6 +139,11 @@ plot(bCE$bic)
 #making the linear model
 names(env_data)
 Env_no_pH <- lm(Chlor_env_train~Depthm+Salnty+T_degC+O2Sat, data=env_train, na.action = na.omit)
+par(mfrow=c(2,2))
+plot(Chlor_env_train~Salnty, data = env_train)
+plot(Chlor_env_train~log(Depthm), data = env_train)
+plot(Chlor_env_train~O2Sat, data = env_train)
+plot(Chlor_env_train~T_degC, data = env_train)
 summary(Env_no_pH)
 #how good is model fit?
 summary(Env_no_pH)$r.squared
