@@ -41,11 +41,12 @@ env_data[,5] <- ChlorA
 View(env_data)
 
 
-##trying to filter for complete cases only:
+##filter for complete cases only:
 d.Phaeop.nuts <- d.Phaeop.nuts[complete.cases(d.Phaeop.nuts), ] # Perf 
 nut_data <- nut_data[complete.cases(nut_data), ] 
 ChlorA_nut <- nut_data[,8]
 env_data <- env_data[complete.cases(env_data), ]
+master_test <- master_test[complete.cases(master_test),]
 
 ##training and testing data:
 set.seed(2019)
@@ -70,6 +71,7 @@ Chlor_env_train <- ChlorA[etrain_ind]
 
 #alright. Lets start some modeling
 library(leaps)
+library(DMwR)
 best.ChlorA.Nut <- regsubsets(ChlorA_nut~.,data=nut_data, nvmax=10)
 #NutWChlor <- regsubsets(ChlorA_train~., data=nutAndChlor_train, nvmax = 10)
 summary(best.ChlorA.Nut)
@@ -97,23 +99,31 @@ summary(nut_best_mod)
 summary(nut_best_mod)$r.squared
 summary(nut_log_mod)$r.squared
 summary(nut_log_mod2)$r.squared #huh 62.2 for this one. 
-#Residual Mean Sq Error: 92.4%
+#Residual Mean Sq Error: .925.
+#ChlorA_nut runs from 0-19.13
 summary(nut_best_mod)$sigma 
+summary(nut_log_mod)$sigma
+summary(nut_log_mod2)$sigma
+#normalizing rmse: so this is like 4.8% not bad...
+summary(nut_best_mod)$sigma / 19.13
+par(mfrow=c(2,2))
+plot(nut_best_mod)
+plot(nut_log_mod)
+plot(nut_log_mod2)
 
 #Diagnostics:
 par(mfrow=c(2,2))
 plot(nut_best_mod)
 
-#Predicting: This is not working rn. 
+#Predicting: 
 predict_nut <- predict.lm(nut_best_mod, newdata = nut_test,interval = "prediction", na.action=na.pass)
 predict_nut_omit <- predict.lm(nut_best_mod, newdata = nut_test,interval = "prediction", na.action=na.omit)
 par(mfrow=c(1,2))
 plot(predict_nut_omit)
 plot(ChlorA_test)
 plot(predict_nut)
-
-#ok, so it is predicting something. How do I tell if the 
-#prediction is right? 
+regr.eval(ChlorA_nut_test,predict_nut)
+#mae: 4.18, mse:9.55 rmse: 3.09
 
 
 ##Enviromental Variables
@@ -139,6 +149,8 @@ plot(bCE$bic)
 #making the linear model
 names(env_data)
 Env_no_pH <- lm(Chlor_env_train~Depthm+Salnty+T_degC+O2Sat, data=env_train, na.action = na.omit)
+Env_mod2 <- lm(sqrt(Chlor_env_train)~Depthm+Salnty+T_degC+O2Sat, data=env_train, na.action = na.omit)
+Env_mod3 <- lm(Chlor_env_train~sqrt(Depthm)+Salnty+T_degC+O2Sat, data=env_train, na.action = na.omit)
 par(mfrow=c(2,2))
 plot(Chlor_env_train~Salnty, data = env_train)
 plot(Chlor_env_train~log(Depthm), data = env_train)
@@ -151,21 +163,33 @@ summary(Env_no_pH)$r.squared
 #13.5% is garbage for no pH. With pH is 38.4%.  
 #RMSE: 1.14? and 1.2 for no pH?  
 summary(Env_no_pH)$sigma
+summary(Env_mod2)$r.squared #.002?
+summary(Env_mod2)$sigma #.454
+summary(Env_mod3)$r.squared #.004?
+summary(Env_mod3)$sigma #1.21
+summary(Env_mod3)
 #Diagnostics:
 par(mfrow=c(2,2))
 plot(Env_no_pH)
+plot(Env_mod2)
+plot(Env_mod3)
 anova(Env_no_pH)
-anova(Env_best_mod)
+predict_env <- predict.lm(Env_no_pH, newdata = env_test,interval = "prediction")
+regr.eval(Chlor_env_test, predict_env)
+#mae: 5.07, mse: 14.63, rmse: 3.825
 
 
 #both nut and env? 
+ChlorA_all <- bottleData[,22]
 env <- env.frame[,c(-9,-7)]
-master <- c(env,nut_train)
+master <- c(env_train,nut_train)
 master <- data.frame(master)
 best.ChlorA.master <- regsubsets(ChlorA_train~.,data=master, nvmax=7)
 #trying to make the master model. Lets just see how it goes.
 best_mod <- lm(ChlorA_train~Depthm+Salnty+T_degC+R_SIGMA+PO4uM+SiO3uM+NO2uM+NO3uM+NH3uM+C14As2, data=master, na.action = na.omit)
+best_mod2 <- lm(sqrt(ChlorA_all)~Depthm+Salnty+T_degC+R_SIGMA+PO4uM+SiO3uM+NO2uM+NO3uM+C14As2, data=bottlemaster, na.action = na.omit)
 summary(best_mod)
+#Mult R-sq 66%, Adj 65.8
 #how good is model fit?
 summary(best_mod)$r.squared
 #r squared of .659 
@@ -175,10 +199,15 @@ summary(best_mod)$sigma
 par(mfrow=c(2,2))
 plot(best_mod)
 anova(best_mod)
+summary(best_mod2) #mrs: .63 arsq:.6334, untransformed
+#.6793 and .6791 sqrt(ChlorA_all)
+summary(best_mod2)$sigma #.299
+plot(best_mod2)
 
 #shall we try to predict again?
-predict_master <- predict.lm(best_mod, newdata = master_test,interval = "prediction", na.action=na.pass)
+predict_master <- predict.lm(best_mod, newdata = master_test,interval = "prediction", na.action=na.omit)
 plot(predict_master)
+regr.eval(master_test, predict_master)
 
 anova(best_mod)["Residuals", "Sum Sq"]
 #RSS of 2024.617
@@ -187,11 +216,20 @@ anova(best_mod)["Residuals", "Sum Sq"]
 library(fields)
 library(gam)
 #gam fit:
-gam_nut <- gam(ChlorA_train~s(PO4uM,3)+s(SiO3uM,3)+s(NO2uM,3)+s(NO3uM,3)+s(NH3uM,3)+s(C14As2,3), data=nut_train)
+gam_test <- gam(ChlorA_nut_train~s(PO4uM,3)+s(SiO3uM,3)+s(NO2uM,3)+s(NO3uM,3)+s(NH3uM,3)+s(C14As2,3), data = nut_train)
+gam_nut <- gam::gam(ChlorA_nut~s(PO4uM,3)+s(SiO3uM,3)+s(NO2uM,3)+s(NO3uM,3)+s(NH3uM,3)+s(C14As2,3), data=nut_data)
 par(mfrow=c(2,3))
 plot(gam_nut, se=TRUE, col="blue")
 #C14As2 looks super linear.
 gam_nut2 <- gam(ChlorA_train~s(PO4uM,2)+s(SiO3uM,3)+s(NO2uM,3)+s(NO3uM,2)+s(NH3uM,3)+C14As2, data=nut_train)
+plot(gam_nut2, se=TRUE, col="blue")
 anova(gam_nut,gam_nut2)
 anova(gam_nut2)
 summary(gam_nut2)
+#Null Deviance 5951, Residual Deviance 2051.5
+#AIC: 6701
+summary(gam_nut)
+#Null: 5951, Residual 2027.5
+#AIC: 6680.6
+#so cubic splines are better.
+
